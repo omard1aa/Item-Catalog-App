@@ -46,9 +46,7 @@
     {% endfor %}
     <div style="margin-left: 450px">
         <span style="float:left;">
-            <form action="{{ url_for('add_item', categoryName=categoryname) }}" method="GET">
-                <button class="btn btn-primary" type="submit">Create new item</button>
-            </form>
+
         </span>
         <span style="float:right;  margin-right: 465px;">
             <form style="text-align: center" action="{{url_for('show_for_public', restaurant_id=restaurant_id)}}" method="GET">

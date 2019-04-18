@@ -1,18 +1,40 @@
-from flask import Flask, url_for, render_template, redirect, request, jsonify, flash, abort, g, session
+from flask import Flask, url_for, render_template, redirect, request, jsonify,\
+    flash, abort, g, session as login_session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from database_setup import Base, Item, Category, User
+import random, string
 from flask_httpauth import HTTPBasicAuth
+from oauth2client.client import flow_from_clientsecrets
+from oauth2client.client import FlowExchangeError
+import httplib2
+import json
+from flask import make_response
+import requests
+
 auth = HTTPBasicAuth()
 app = Flask(__name__)
 engine = create_engine('sqlite:///cat-app.db')
 Base.metadata.bind = engine
-web_session = session
+web_session = login_session
+
+CLIENT_ID = json.loads(
+    open('client_secrets.json', 'r').read())['web']['client_id']
+APPLICATION_NAME = "Restaurant Menu Application"
 
 
 @app.route('/', methods=['GET', 'POST'])
 def main():
     return render_template('index.html')
+
+
+def login_required(f):
+    @wraps(f)
+    def x(*args, **kwargs):
+        if 'username' not in login_session:
+            return redirect('/login')
+        return f(*args, **kwargs)
+    return x
 
 
 @auth.verify_password
@@ -26,19 +48,111 @@ def verify_password(username, password):
     return True
 
 
+@app.route('/gconnect', methods=['POST'])
+def gconnect():
+    # Validate state token
+    if request.args.get('state') != login_session['state']:
+        response = make_response(json.dumps('Invalid state parameter.'), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    # Obtain authorization code
+    code = request.data
+
+    try:
+        # Upgrade the authorization code into a credentials object
+        oauth_flow = flow_from_clientsecrets('client_secrets.json', scope='')
+        oauth_flow.redirect_uri = 'postmessage'
+        credentials = oauth_flow.step2_exchange(code)
+    except FlowExchangeError:
+        response = make_response(
+            json.dumps('Failed to upgrade the authorization code.'), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+    # Check that the access token is valid.
+    access_token = credentials.access_token
+    url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s'
+           % access_token)
+    h = httplib2.Http()
+    result = json.loads(h.request(url, 'GET')[1])
+    # If there was an error in the access token info, abort.
+    if result.get('error') is not None:
+        response = make_response(json.dumps(result.get('error')), 500)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+    # Verify that the access token is used for the intended user.
+    gplus_id = credentials.id_token['sub']
+    if result['user_id'] != gplus_id:
+        response = make_response(
+            json.dumps("Token's user ID doesn't match given user ID."), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+    # Verify that the access token is valid for this app.
+    if result['issued_to'] != CLIENT_ID:
+        response = make_response(
+            json.dumps("Token's client ID does not match app's."), 401)
+        print "Token's client ID does not match app's."
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+    stored_access_token = login_session.get('access_token')
+    stored_gplus_id = login_session.get('gplus_id')
+    if stored_access_token is not None and gplus_id == stored_gplus_id:
+        response = make_response(json.dumps('Current user is already connected.'),
+                                 200)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+    # Store the access token in the session for later use.
+    login_session['access_token'] = credentials.access_token
+    login_session['gplus_id'] = gplus_id
+
+    # Get user info
+    userinfo_url = "https://www.googleapis.com/oauth2/v1/userinfo"
+    params = {'access_token': credentials.access_token, 'alt': 'json'}
+    answer = requests.get(userinfo_url, params=params)
+
+    data = answer.json()
+
+    login_session['username'] = data['name']
+    login_session['picture'] = data['picture']
+    login_session['email'] = data['email']
+
+    output = ''
+    output += '<h1>Welcome, '
+    output += login_session['username']
+    output += '!</h1>'
+    output += '<img src="'
+    output += login_session['picture']
+    output += ' " style = "width: 300px; height: 300px;border-radius:' \
+              ' 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
+    flash("you are now logged in as %s" % login_session['username'])
+    print "done!"
+    return output
+
+
 @app.route('/profile/<int:id>')
 @auth.login_required
 def get_login(id):
+    # This function is responsible for retrieving private page for authenticated user
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     user = session.query(User).filter_by(id=id).one()
     categories = session.query(Category).all()
     items = session.query(Item).all()
+    if 'username' not in login_session:
+        return redirect(url_for('login_page'))
     return render_template('protected_resources.html', user=user, categories=categories)
 
 
 @app.route('/login/', methods=['POST', 'GET'])
 def login_page():
+    # This function is responsible for authenticating user and give permissions to be logged in
+    state = ''.join(random.choice(string.ascii_uppercase + string.digits)
+                    for x in xrange(32))
+    login_session['state'] = state
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     if request.method == 'POST':
@@ -60,6 +174,7 @@ def login_page():
 
 @app.route('/register/', methods=['GET', 'POST'])
 def register_page():
+    # This function is responsible for creating new account for new users.
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     if request.method == 'POST':
@@ -88,6 +203,7 @@ def register_page():
 
 @app.route('/main', methods=['GET'])
 def show_for_public():
+    # This function is responsible for show the public page for the public
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     categories = session.query(Category).all()
@@ -97,6 +213,7 @@ def show_for_public():
 
 @app.route('/<string:categoryName>/items')
 def show_details(categoryName):
+    # This function is responsible for showing category items in each category
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     category = session.query(Category).filter_by(title=categoryName).one()
@@ -105,6 +222,7 @@ def show_details(categoryName):
 
 
 def create_user():
+    # This function is responsible for adding new user to database
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     form_username = request.form['username']
@@ -129,6 +247,7 @@ def create_user():
 @app.route('/<string:categoryName>/new-item', methods=['GET', 'POST'])
 @auth.login_required
 def add_item(categoryName):
+    # This function is responsible for allowing authenticating users to add new items to a category.
     if request.method == 'POST':
         DBSession = sessionmaker(bind=engine)
         session = DBSession()
@@ -148,6 +267,7 @@ def add_item(categoryName):
 @app.route('/delete/<int:itemid>/<string:itemname>', methods=['GET', 'POST'])
 @auth.login_required
 def delete_item(itemid, itemname):
+    # This function is responsible for allowing authenticating users to delete items from a category.
     if request.method == 'POST':
         print('item id ', itemid)
         DBSession = sessionmaker(bind=engine)
@@ -163,6 +283,7 @@ def delete_item(itemid, itemname):
 @app.route('/edit/<string:itemname>', methods=['GET', 'POST'])
 @auth.login_required
 def edit_item(itemname):
+    # This function is responsible for allowing authenticating users to update items in categories.
     if request.method == 'POST':
         DBSession = sessionmaker(bind=engine)
         session = DBSession()
@@ -181,21 +302,41 @@ def edit_item(itemname):
 
 @app.route('/catalog.json')
 def json():
+    # This page is made to retrieve all items and category JSON data
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     categories = session.query(Category).all()
     items = session.query(Item).all()
-    #catalog = []
-    #for c in categories:
+    # catalog = []
+    # for c in categories:
     #    catalog.append(c.serialize)
     #    items = session.query(Item).filter_by(category_id=c.id).all()
     #    catalog[-1]['Items'] = [i.serialize for i in items]
-    #return jsonify(Categories=catalog)
+    # return jsonify(Categories=catalog)
     return jsonify(Item=[item.serialize for item in items])
+
+@app.route('/category/<int:category_id>/items/json')
+def show_category_JSON(category_id):
+    # This page is made to retrieve items of specific category JSON data
+    DBSession = sessionmaker(bind=engine)
+    session = DBSession()
+    category = session.query(Category).filter_by(id=category_id).one()
+    items = session.query(Item).filter_by(category=category.title).all()
+    return jsonify(Item=[item.serialize for item in items])
+
+
+@app.route('/category/<int:category_id>/item/<int:item_id>/json')
+def menuItemJSON(category_id, item_id):
+    # This page is made to retrieve a specific item of specific category JSON data
+    DBSession = sessionmaker(bind=engine)
+    session = DBSession()
+    category = session.query(Category).filter_by(id=category_id).one()
+    item = session.query(Item).filter_by(id=item_id, category=category.title).one()
+    return jsonify(Item=item.serialize)
 
 @app.route('/logout')
 def logout():
-    session.pop('username')
+    login_session.pop('username')
     return redirect(url_for('main'))
 
 
