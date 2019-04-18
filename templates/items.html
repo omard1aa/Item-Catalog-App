@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Items</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+</head>
+
+<body style="margin: 25px 100px 25px 100px; background-color: palegoldenrod">
+<nav class="navbar navbar-dark bg-dark fixed-top">
+    <a class="navbar-brand" href="{{ url_for('main') }}">Catalog Item App</a>
+</nav><br><br>
+<h1 style="text-align: center">{{category.title}} Items</h1>
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+
+<ul>
+{% for message in messages %}
+  <li><strong>{{message}}</strong></li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endwith %}
+{% for item in items%}
+<div style="background-color: white;  border-radius: 25px; padding: 15px;">
+{% if item.id == 1 %}
+<a href="{{ url_for('add_item', categoryName=item.category) }}">Add item</a>
+{% endif %}
+    <h2>{{item.name}}</h2>
+    <p>{{item.description}}</p>
+    <p>{{item.category}}</p>
+    <span style="float:left;">
+        <form  action="{{url_for('edit_item', itemname=item.name)}}" method="GET">
+            <button class="btn btn-warning" type="submit" name="edit">Edit</button>
+        </form>
+    </span>
+    <span style="float:right;  margin-right: 990px;">
+        <form action="{{url_for('delete_item', itemid=item.id, itemname=item.name)}}" method="GET">
+            <button class="btn btn-danger" type="submit" name="del">Delete</button>
+        </form>
+    </span>
+    <br><br>
+    </div>
+    <br>
+    <hr>
+    {% endfor %}
+    <div style="margin-left: 450px">
+        <span style="float:left;">
+            <form action="{{ url_for('add_item', categoryName=categoryname) }}" method="GET">
+                <button class="btn btn-primary" type="submit">Create new item</button>
+            </form>
+        </span>
+        <span style="float:right;  margin-right: 465px;">
+            <form style="text-align: center" action="{{url_for('show_for_public', restaurant_id=restaurant_id)}}" method="GET">
+                <button class="btn btn-outline-primary" type="submit">Back</button>
+            </form>
+        </span>
+        <br>
+    </div>
+<footer class = "footer" style="background: lightgoldenrodyellow; color: #333333; margin-top: 5%; padding-bottom: 0px;">
+    <div class = "container">
+       <div class = "row justify-content-center">
+            <div class = "col-auto col-sm-auto">
+                <p>Made with love by <a style="color: blue;" href="https://www.github.com/omardiaa97" target="_blank">ODE97</a> @Udacity-FSND</p>
+                <p style="text-align: center;">© Copyright 2019 </p>
+            </div>
+       </div>
+    </div>
+</footer>
+</body>
+</html>

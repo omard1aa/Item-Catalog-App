@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Delete Item</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+</head>
+<body>
+    <br>
+    <div class="container">
+        <div class="row" style="margin-top:50px">
+            <div class="col-sm-4"></div>
+            <div class="col-sm-4">
+                <form action="{{url_for('delete_item', itemid=itemid, itemname=itemname)}}" method="POST">
+                        <span>Do you want to delete</span><span style="font-size: 16px" class="badge">{{itemname}}</span><span>?</span>
+                        <p style="text-align: center"><button class="btn btn-danger btn-block" type="submit">Delete</button></p>
+                </form>
+            </div>
+        </div>
+    </div>
+<footer class = "footer" style="background: lightgoldenrodyellow; color: #333333; margin-top: 5%; padding-bottom: 0px;">
+    <div class = "container">
+       <div class = "row justify-content-center">
+            <div class = "col-auto col-sm-auto">
+                <p>Made with love by <a style="color: blue;" href="https://www.github.com/omardiaa97" target="_blank">ODE97</a> @Udacity-FSND</p>
+                <p style="text-align: center;">© Copyright 2019 </p>
+            </div>
+       </div>
+    </div>
+</footer>
+</body>
+</html>
