@@ -14,7 +14,7 @@ import requests
 
 auth = HTTPBasicAuth()
 app = Flask(__name__)
-engine = create_engine('sqlite:///cat-app.db')
+engine = create_engine('postgresql://catalog:password@localhost/catalog')
 Base.metadata.bind = engine
 web_session = login_session
 
