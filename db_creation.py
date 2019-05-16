@@ -23,44 +23,44 @@ session = DBSession()
 
 latest_items = []
 # Categories
-#category1 = Category(title="Soccer", id=10)
+category1 = Category(title="Soccer", id=10)
 
-#session.add(category1)
+session.add(category1)
 
-# category = Category(title="Basketball", id=2)
+category = Category(title="Basketball", id=2)
 
-# session.add(category)
+session.add(category)
 
-# category = Category(title="Baseball", id=3)
+category = Category(title="Baseball", id=3)
 
-# session.add(category)
+session.add(category)
 
-# category = Category(title="Frisbee", id=4)
+category = Category(title="Frisbee", id=4)
 
-# session.add(category)
+session.add(category)
 
-# category = Category(title="Snowboarding", id=5)
+category = Category(title="Snowboarding", id=5)
 
-# session.add(category)
+session.add(category)
 
-# category = Category(title="Rock Climbing", id=6)
+category = Category(title="Rock Climbing", id=6)
 
-# session.add(category)
+session.add(category)
 
-# category = Category(title="Foosball", id=7)
+category = Category(title="Foosball", id=7)
 
-# session.add(category)
+session.add(category)
 
-# category = Category(title="Skating", id=8)
+category = Category(title="Skating", id=8)
 
-# session.add(category)
+session.add(category)
 
-# category = Category(title="Hockey", id=9)
+category = Category(title="Hockey", id=9)
 
-# session.add(category)
+session.add(category)
 
-# session.commit()
-# print "Categories added!"
+session.commit()
+print "Categories added!"
 
 # # # Category items
 item = Item(name='Soccer Cleats', description='Lorem ipsum dolor sit amet, consectetuer adipiscing elit.', category='Soccer')
