@@ -4,9 +4,6 @@ from sqlalchemy.ext import declarative
 from sqlalchemy.orm import sessionmaker, relationship
 from passlib.apps import custom_app_context as pwd_context
 Base = declarative.declarative_base()
-engine = create_engine('postgresql://catalog:password@localhost/catalog')
-Base.metadata.bind = engine
-
 
 
 class Category(Base):
@@ -52,5 +49,6 @@ class User(Base):
         return pwd_context.verify(password_to_be_verified, self.password)
 # engine = create_engine('sqlite:///catalog-app.db')
 
-
+engine = create_engine('postgresql://catalog:password@localhost/catalog')
+Base.metadata.bind = engine
 Base.metadata.create_all(engine)
